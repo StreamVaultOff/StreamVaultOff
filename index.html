@@ -151,7 +151,7 @@
   }
   .modal-overlay.open { opacity: 1; pointer-events: all; }
 
-  /* ── PASSWORD MODAL ── */
+  /* ── Fallout MODAL ── */
   .modal-box {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; padding: 2.5rem; width: 380px; max-width: 90vw;
@@ -275,7 +275,7 @@
   <div class="hero-content">
     <span class="hero-tag">&#9670; Now Streaming</span>
     <h1>Your Private Cinema</h1>
-    <p>Unfortunatly, we are currently experiencing server issues. Hang tight, we'll fix it soon!</p>
+    <p>Unfortunatly, we are currently experiencing server issues. Hang tight, well fix it soon!</p>
     <button class="btn-play" id="heroPlay"><span class="play-icon"></span> Browse Films</button>
   </div>
 </div>
@@ -348,7 +348,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const ADMIN_PASS = 'password';
+const api_fallout = 'X3h39fLrj36jBW';
 const API_BASE = window.STREAMVAULT_API || 'http://localhost:3000';
 
 // ── State ──
@@ -371,7 +371,7 @@ async function loadFilms() {
 function renderLibrary() {
   const row = document.getElementById('filmRow');
   if (films.length === 0) {
-    row.innerHTML = '<div class="empty-library" style="flex:1;padding:3rem 0;"><div style="font-size:2rem;margin-bottom:0.5rem;">&#127916;</div><p>No films? This can be due to many issues, we will fix that soon :)</p></div>';
+    row.innerHTML = '<div class="empty-library" style="flex:1;padding:3rem 0;"><div style="font-size:2rem;margin-bottom:0.5rem;">&#127916;</div><p>No films? This can be due to many issues, we will fix that soon!</p></div>';
     return;
   }
   row.innerHTML = films.map((f, i) => `
@@ -465,7 +465,7 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// Password flow
+//flow
 document.getElementById('adminBtn').onclick = () => {
   document.getElementById('pwInput').value = '';
   document.getElementById('pwError').style.display = 'none';
@@ -474,9 +474,9 @@ document.getElementById('adminBtn').onclick = () => {
   setTimeout(() => document.getElementById('pwInput').focus(), 100);
 };
 
-function submitPassword() {
+function submitFallout() {
   const val = document.getElementById('pwInput').value;
-  if (val === ADMIN_PASS) {
+  if (val === api_fallout) {
     closeModal('pwModal');
     renderAdminList();
     openModal('adminModal');
@@ -490,8 +490,8 @@ function submitPassword() {
   }
 }
 
-document.getElementById('pwSubmit').onclick = submitPassword;
-document.getElementById('pwInput').onkeydown = e => { if (e.key === 'Enter') submitPassword(); };
+document.getElementById('pwSubmit').onclick = submitFallout;
+document.getElementById('pwInput').onkeydown = e => { if (e.key === 'Enter') submitFallout(); };
 document.getElementById('pwClose').onclick = () => closeModal('pwModal');
 
 document.getElementById('adminClose').onclick = () => closeModal('adminModal');
