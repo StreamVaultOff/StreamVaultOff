@@ -371,7 +371,7 @@ async function loadFilms() {
 function renderLibrary() {
   const row = document.getElementById('filmRow');
   if (films.length === 0) {
-    row.innerHTML = '<div class="empty-library" style="flex:1;padding:3rem 0;"><div style="font-size:2rem;margin-bottom:0.5rem;">&#127916;</div><p>No films yet. Admins can upload MP4s to populate the library.</p></div>';
+    row.innerHTML = '<div class="empty-library" style="flex:1;padding:3rem 0;"><div style="font-size:2rem;margin-bottom:0.5rem;">&#127916;</div><p>No films? This can be due to many issues, we will fix that soon :)</p></div>';
     return;
   }
   row.innerHTML = films.map((f, i) => `
