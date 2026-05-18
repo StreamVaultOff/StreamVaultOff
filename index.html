@@ -394,6 +394,7 @@ document.getElementById('upBtn').onclick = () => {
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/films');
+  xhr.setRequestHeader('x-admin-password', ADMIN_PASS);
   xhr.upload.onprogress = e => {
     if(e.lengthComputable){
       const p = Math.round(e.loaded/e.total*100);
@@ -428,7 +429,12 @@ document.getElementById('upBtn').onclick = () => {
 /* ── delete ── */
 async function delFilm(id, title){
   if(!confirm('Delete "'+title+'"? This cannot be undone.')) return;
-  const r = await fetch('/api/films/'+id, {method:'DELETE'});
+  const r = await fetch('/api/films/'+id, {
+    method:'DELETE',
+    headers:{
+      'x-admin-password': ADMIN_PASS
+    }
+  });
   if(r.status===204){ toast('"'+title+'" deleted','err'); loadLibrary(); loadAdminFilms(); }
   else { const j=await r.json(); toast(j.error||'Delete failed','err'); }
 }
