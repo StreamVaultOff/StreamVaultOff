@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamVault</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#13131a;--surface2:#1c1c28;--surface3:#252535;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --accent:#e63946;--accent2:#ff6b6b;--adim:rgba(230,57,70,0.15);
+  --text:#f0eee8;--muted:#7a7a8c;--green:#4ade80;--amber:#fbbf24;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 3rem;height:68px;background:rgba(10,10,15,.97);border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;color:var(--accent)}
+.logo span{color:var(--text)}
+.nav-links{display:flex;gap:2rem;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.btn-admin{background:transparent;border:1px solid rgba(230,57,70,.5);color:var(--accent);padding:7px 18px;border-radius:4px;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.btn-admin:hover{background:var(--accent);color:#fff}
+
+/* HERO */
+.hero{height:100vh;position:relative;display:flex;align-items:flex-end;padding:0 3rem 5rem;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 60% 40%,rgba(230,57,70,.12) 0%,transparent 60%),radial-gradient(ellipse at 20% 80%,rgba(255,107,107,.06) 0%,transparent 50%),var(--bg)}
+.hero-grid{position:absolute;inset:0;opacity:.04;background-image:linear-gradient(var(--text) 1px,transparent 1px),linear-gradient(90deg,var(--text) 1px,transparent 1px);background-size:60px 60px}
+.hero-content{position:relative;z-index:1;max-width:600px}
+.hero-tag{display:inline-block;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;border-radius:2px;margin-bottom:1.2rem}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(3.5rem,7vw,6rem);line-height:.95;letter-spacing:2px;margin-bottom:1rem}
+.hero p{color:var(--muted);font-size:1rem;line-height:1.7;max-width:420px;margin-bottom:2rem}
+.btn-play{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:#fff;padding:13px 28px;border-radius:4px;border:none;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-play:hover{background:var(--accent2);transform:translateY(-1px)}
+.tri{width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:10px solid currentColor}
+
+/* MAIN */
+main{padding:0 3rem 4rem}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;margin-bottom:1.2rem;display:flex;align-items:center;gap:12px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.accent-bar{width:4px;height:22px;background:var(--accent);border-radius:2px}
+section{margin-bottom:3rem}
+
+/* FILM ROW */
+.film-row{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;scrollbar-width:thin;scrollbar-color:var(--surface2) transparent}
+.film-row::-webkit-scrollbar{height:4px}
+.film-row::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:4px}
+.film-card{flex:0 0 200px;cursor:pointer;position:relative;border-radius:6px;overflow:hidden;transition:transform .25s,box-shadow .25s;background:var(--surface)}
+.film-card:hover{transform:scale(1.04) translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,.6),0 0 0 1px rgba(230,57,70,.3)}
+.thumb{width:100%;aspect-ratio:2/3;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted);font-size:.75rem}
+.film-info{padding:10px 12px}
+.ftitle{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.fmeta{font-size:.72rem;color:var(--muted)}
+.film-ov{position:absolute;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+.film-card:hover .film-ov{opacity:1}
+.pbig{width:52px;height:52px;border-radius:50%;background:rgba(230,57,70,.9);border:2px solid rgba(255,255,255,.3)}
+.pbig::after{content:'';display:block;width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent;border-left:15px solid #fff;margin:16px 0 0 20px}
+.empty-lib{flex:1;padding:3rem;text-align:center;color:var(--muted)}
+
+/* OVERLAYS */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;padding:1rem}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:2.2rem;width:440px;max-width:100%;max-height:92vh;overflow-y:auto;transform:translateY(18px);transition:transform .25s;position:relative;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+.overlay.open .modal{transform:translateY(0)}
+.mcl{position:absolute;top:.9rem;right:.9rem;background:var(--surface2);border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:5px 9px;border-radius:4px;transition:all .2s}
+.mcl:hover{color:var(--text);background:var(--surface3)}
+.mtitle{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:2px;margin-bottom:.25rem}
+.msub{color:var(--muted);font-size:.85rem;margin-bottom:1.6rem}
+.flbl{font-size:.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:block}
+.finp{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;margin-bottom:.9rem}
+.finp:focus{border-color:var(--accent)}
+.finp.shake{animation:shake .4s ease;border-color:var(--accent)}
+.fprimary{width:100%;background:var(--accent);color:#fff;border:none;padding:11px;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:background .2s}
+.fprimary:hover{background:var(--accent2)}
+.fprimary:disabled{opacity:.5;cursor:not-allowed}
+.ferr{color:var(--accent2);font-size:.78rem;margin-top:-.5rem;margin-bottom:.8rem;display:none}
+
+/* ADMIN MODAL */
+.am{width:720px;max-width:100%;padding:0;display:flex;flex-direction:column;max-height:92vh}
+.atabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.tbtn{flex:1;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;padding:1.1rem;cursor:pointer;transition:all .2s;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tbtn:hover{color:var(--text)}
+.tbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tpanel{display:none;padding:1.8rem 2rem;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent}
+.tpanel.active{display:block}
+
+/* DROP ZONE */
+.dz{border:2px dashed rgba(230,57,70,.35);border-radius:8px;padding:2rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:.8rem;user-select:none}
+.dz:hover,.dz.over{border-color:var(--accent);background:var(--adim)}
+.dz-icon{font-size:2rem;margin-bottom:.5rem;pointer-events:none}
+.dz-lbl{color:var(--muted);font-size:.85rem;line-height:1.6;pointer-events:none}
+.dz-lbl strong{color:var(--text)}
+.fchosen{font-size:.8rem;color:var(--accent2);margin-bottom:.8rem;min-height:1rem}
+.progwrap{margin-bottom:1rem;display:none}
+.progbar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:5px}
+.progfill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .2s}
+.proglbl{font-size:.75rem;color:var(--muted)}
+.row2{display:flex;gap:8px;align-items:center}
+.row2 .finp{margin-bottom:0;flex:1}
+.bupl{flex-shrink:0;background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:5px;font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:600;cursor:pointer;transition:background .2s}
+.bupl:hover{background:var(--accent2)}
+.bupl:disabled{opacity:.5;cursor:not-allowed}
+
+/* MANAGE */
+.srchwrap{position:relative;margin-bottom:.8rem}
+.srchwrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.4}
+.srchinp{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:9px 12px 9px 36px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+.srchinp:focus{border-color:var(--accent)}
+.mcount{font-size:.73rem;color:var(--muted);margin-bottom:.7rem}
+.mlist{display:flex;flex-direction:column;gap:6px}
+.mitem{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 13px}
+.mitem:hover{border-color:var(--border2)}
+.mico{width:34px;height:34px;background:var(--surface3);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.minf{flex:1;min-width:0}
+.mname{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mmeta{font-size:.7rem;color:var(--muted);margin-top:2px}
+.macts{display:flex;gap:4px;flex-shrink:0}
+.act{background:none;border:1px solid var(--border2);color:var(--muted);cursor:pointer;font-size:.68rem;font-weight:600;padding:5px 8px;border-radius:4px;font-family:'DM Sans',sans-serif;transition:all .2s;text-transform:uppercase;white-space:nowrap}
+.act:hover{color:var(--text);background:var(--surface3)}
+.act.del:hover{color:var(--accent);border-color:rgba(230,57,70,.4);background:rgba(230,57,70,.08)}
+.nofilm{text-align:center;color:var(--muted);font-size:.85rem;padding:2.5rem;border:1px dashed var(--border);border-radius:7px}
+
+/* VIDEO */
+.vm{width:min(92vw,900px);padding:0;background:#000}
+.vhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface)}
+.vhead .mcl{position:static;margin:0}
+.vtitle{font-weight:600;font-size:.95rem}
+video{width:100%;max-height:70vh;display:block}
+
+/* TOAST */
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface);border:1px solid var(--border2);padding:11px 22px;border-radius:6px;font-size:.85rem;z-index:999;transition:transform .3s;pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-left:3px solid var(--green)}
+.toast.err{border-left:3px solid var(--accent)}
+.toast.inf{border-left:3px solid var(--amber)}
+
+input[type=file]{display:none}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">STREAM<span>VAULT</span></div>
+  <ul class="nav-links">
+    <li><a href="#" onclick="goLib(event)">Home</a></li>
+    <li><a href="#" onclick="goLib(event)">Films</a></li>
+    <li><a href="#" onclick="goLib(event)">Library</a></li>
+  </ul>
+  <button class="btn-admin" id="adminBtn">◆ Admin</button>
+</nav>
+
+<div class="hero">
+  <div class="hero-bg"></div><div class="hero-grid"></div>
+  <div class="hero-content">
+    <span class="hero-tag">◆ Now Streaming</span>
+    <h1>Your Private Cinema</h1>
+    <p>Stream and manage your personal film collection — beautifully curated, always available to everyone on the network.</p>
+    <button class="btn-play" onclick="goLib(event)"><span class="tri"></span> Browse Films</button>
+  </div>
+</div>
+
+<main>
+  <section id="libSec">
+    <div class="sec-title"><div class="accent-bar"></div> Your Library</div>
+    <div id="filmRow" class="film-row">
+      <div class="empty-lib"><div style="font-size:2rem">⏳</div><p>Loading…</p></div>
+    </div>
+  </section>
+</main>
+
+<!-- PASSWORD -->
+<div class="overlay" id="pwOv">
+  <div class="modal">
+    <button class="mcl" onclick="cl('pwOv')">✕</button>
+    <div class="mtitle">Admin Access</div>
+    <p class="msub">Enter the administrator password to manage films.</p>
+    <label class="flbl">Password</label>
+    <input class="finp" id="pwInp" type="password" placeholder="••••••••" autocomplete="off">
+    <p class="ferr" id="pwErr">Incorrect password — try again.</p>
+    <button class="fprimary" id="pwBtn">Unlock Panel</button>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="overlay" id="adminOv">
+  <div class="modal am">
+    <div class="atabs">
+      <button class="tbtn active" id="tabUpBtn" onclick="tab('up')">⬆ Upload Film</button>
+      <button class="tbtn" id="tabMgBtn" onclick="tab('mg')">⚙ Manage Library</button>
+    </div>
+
+    <!-- Upload -->
+    <div class="tpanel active" id="tp-up">
+      <div class="dz" id="dz">
+        <div class="dz-icon">🎬</div>
+        <div class="dz-lbl"><strong>Drop an MP4 here</strong><br>or click to browse files</div>
+      </div>
+      <div class="fchosen" id="fchosen"></div>
+      <label class="flbl">Film Title</label>
+      <div class="row2">
+        <input class="finp" id="ftitle" type="text" placeholder="Leave blank to use filename">
+        <button class="bupl" id="upBtn">Upload</button>
+      </div>
+      <div class="progwrap" id="upProg">
+        <div class="proglbl" id="upLbl">Uploading…</div>
+        <div class="progbar"><div class="progfill" id="upFill"></div></div>
+      </div>
+    </div>
+
+    <!-- Manage -->
+    <div class="tpanel" id="tp-mg">
+      <div class="srchwrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="srchinp" id="srch" type="text" placeholder="Search films…" oninput="filterMg()">
+      </div>
+      <div class="mcount" id="mcount"></div>
+      <div class="mlist" id="mlist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- VIDEO -->
+<div class="overlay" id="vidOv">
+  <div class="modal vm">
+    <div class="vhead">
+      <span class="vtitle" id="vtitle">Film</span>
+      <button class="mcl" onclick="clVid()">✕</button>
+    </div>
+    <video id="vid" controls preload="metadata"></video>
+  </div>
+</div>
+
+<input type="file" id="fi" accept="video/*">
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_PASS = 'password';
+let adminUnlocked = false;
+let allAdminFilms = [];
+let pendingFile = null;
+
+/* ── utils ── */
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtDt = ts => new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+let _tt;
+function toast(msg, type='ok'){
+  const e = document.getElementById('toast');
+  e.textContent = msg; e.className = 'toast '+type;
+  void e.offsetWidth; e.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(()=>e.classList.remove('show'), 3200);
+}
+
+/* ── overlays ── */
+function op(id){ document.getElementById(id).classList.add('open') }
+function cl(id){ document.getElementById(id).classList.remove('open') }
+document.querySelectorAll('.overlay').forEach(el => el.addEventListener('click', e => {
+  if(e.target !== el) return;
+  if(el.id === 'vidOv') clVid(); else cl(el.id);
+}));
+function goLib(e){ e.preventDefault(); document.getElementById('libSec').scrollIntoView({behavior:'smooth'}) }
+
+/* ── tabs ── */
+function tab(t){
+  ['up','mg'].forEach(n => {
+    document.getElementById('tp-'+n).classList.toggle('active', n===t);
+    document.getElementById('tab'+(n==='up'?'Up':'Mg')+'Btn').classList.toggle('active', n===t);
+  });
+  if(t === 'mg') loadAdminFilms();
+}
+
+/* ── load public library ── */
+async function loadLibrary(){
+  try {
+    const films = await fetch('/api/films').then(r=>r.json());
+    const row = document.getElementById('filmRow');
+    if(!Array.isArray(films) || !films.length){
+      row.innerHTML = '<div class="empty-lib"><div style="font-size:2.5rem">🎬</div><p>No films yet — an admin can upload some above.</p></div>';
+      return;
+    }
+    row.innerHTML = films.map(f => `
+      <div class="film-card" onclick="play(${JSON.stringify(f.streamUrl)}, ${JSON.stringify(f.title)})">
+        <div class="thumb">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="2" width="20" height="20" rx="3"/>
+            <polygon points="10,8 16,12 10,16" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>MP4</span>
+        </div>
+        <div class="film-ov"><div class="pbig"></div></div>
+        <div class="film-info">
+          <div class="ftitle">${esc(f.title)}</div>
+          <div class="fmeta">${f.size}</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('filmRow').innerHTML = '<div class="empty-lib"><p style="color:var(--accent)">Could not connect to server.</p></div>';
+  }
+}
+
+/* ── load admin film list ── */
+async function loadAdminFilms(){
+  try {
+    const films = await fetch('/api/films').then(r=>r.json());
+    allAdminFilms = Array.isArray(films) ? films : [];
+    filterMg();
+  } catch { toast('Could not load films','err') }
+}
+
+/* ── filter manage list ── */
+function filterMg(){
+  const q = (document.getElementById('srch').value||'').toLowerCase();
+  const res = allAdminFilms.filter(f => !q || f.title.toLowerCase().includes(q));
+  document.getElementById('mcount').textContent = res.length + ' film' + (res.length!==1?'s':'') + (q?' matching':'');
+  const list = document.getElementById('mlist');
+  if(!res.length){ list.innerHTML='<div class="nofilm">No films match your search.</div>'; return; }
+  list.innerHTML = res.map(f => `
+    <div class="mitem">
+      <div class="mico">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="3"/>
+          <polygon points="10,8 16,12 10,16" fill="var(--accent)" stroke="none"/>
+        </svg>
+      </div>
+      <div class="minf">
+        <div class="mname">${esc(f.title)}</div>
+        <div class="mmeta">${f.size} · ${fmtDt(f.addedAt)}</div>
+      </div>
+      <div class="macts">
+        <button class="act" onclick="play(${JSON.stringify(f.streamUrl)}, ${JSON.stringify(f.title)})">▶ Play</button>
+        <button class="act del" onclick="delFilm(${JSON.stringify(f.id)}, ${JSON.stringify(f.title)})">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ── password ── */
+document.getElementById('adminBtn').onclick = () => {
+  if(adminUnlocked){ tab('up'); op('adminOv'); return; }
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').style.display='none';
+  document.getElementById('pwInp').classList.remove('shake');
+  op('pwOv');
+  setTimeout(()=>document.getElementById('pwInp').focus(), 150);
+};
+function submitPw(){
+  const v = document.getElementById('pwInp').value;
+  if(v === ADMIN_PASS){
+    adminUnlocked = true;
+    cl('pwOv'); tab('up'); op('adminOv');
+  } else {
+    const el = document.getElementById('pwInp');
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    document.getElementById('pwErr').style.display='block';
+  }
+}
+document.getElementById('pwBtn').onclick = submitPw;
+document.getElementById('pwInp').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPw() });
+
+/* ── drop zone ── */
+const dz = document.getElementById('dz');
+const fi = document.getElementById('fi');
+dz.addEventListener('click', ()=>fi.click());
+dz.addEventListener('dragenter', e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragover',  e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave', e=>{ if(!dz.contains(e.relatedTarget)) dz.classList.remove('over') });
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if(f){ if(!f.type.startsWith('video/')){ toast('Please drop a video file','err'); return; } setFile(f); }
+});
+fi.addEventListener('change', function(){ if(this.files[0]) setFile(this.files[0]); this.value=''; });
+function setFile(f){
+  pendingFile = f;
+  document.getElementById('fchosen').textContent = '✓ ' + f.name + ' (' + fmtSz(f.size) + ')';
+  const t = document.getElementById('ftitle');
+  if(!t.value) t.value = f.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');
+}
+function fmtSz(b){ return b<1048576?(b/1024).toFixed(0)+' KB':b<1073741824?(b/1048576).toFixed(1)+' MB':(b/1073741824).toFixed(2)+' GB' }
+
+/* ── upload (XHR for real progress bar) ── */
+document.getElementById('upBtn').onclick = () => {
+  if(!pendingFile){ toast('Select or drop a file first','err'); return; }
+  const title = document.getElementById('ftitle').value.trim() || pendingFile.name.replace(/\.[^.]+$/,'');
+  const pw=document.getElementById('upProg'), fill=document.getElementById('upFill'), lbl=document.getElementById('upLbl');
+  pw.style.display='block'; fill.style.width='0%'; lbl.textContent='Uploading…';
+  document.getElementById('upBtn').disabled=true;
+
+  const fd = new FormData();
+  fd.append('video', pendingFile);   // field name must be 'video' — matches multer in server.js
+  fd.append('title', title);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/films');
+  xhr.upload.onprogress = e => {
+    if(e.lengthComputable){
+      const p = Math.round(e.loaded/e.total*100);
+      fill.style.width = p+'%'; lbl.textContent = 'Uploading… '+p+'%';
+    }
+  };
+  xhr.onload = () => {
+    const r = JSON.parse(xhr.responseText);
+    if(xhr.status === 201){
+      fill.style.width='100%'; lbl.textContent='Done!';
+      pendingFile=null;
+      document.getElementById('fchosen').textContent='';
+      document.getElementById('ftitle').value='';
+      setTimeout(()=>{ pw.style.display='none'; fill.style.width='0%'; }, 1000);
+      document.getElementById('upBtn').disabled=false;
+      toast('"'+title+'" uploaded — everyone can see it now!','ok');
+      loadLibrary();
+    } else {
+      toast(r.error||'Upload failed','err');
+      pw.style.display='none';
+      document.getElementById('upBtn').disabled=false;
+    }
+  };
+  xhr.onerror = () => {
+    toast('Upload failed — is the server running?','err');
+    pw.style.display='none';
+    document.getElementById('upBtn').disabled=false;
+  };
+  xhr.send(fd);
+};
+
+/* ── delete ── */
+async function delFilm(id, title){
+  if(!confirm('Delete "'+title+'"? This cannot be undone.')) return;
+  const r = await fetch('/api/films/'+id, {method:'DELETE'});
+  if(r.status===204){ toast('"'+title+'" deleted','err'); loadLibrary(); loadAdminFilms(); }
+  else { const j=await r.json(); toast(j.error||'Delete failed','err'); }
+}
+
+/* ── play ── */
+function play(url, title){
+  document.getElementById('vtitle').textContent = title;
+  const v = document.getElementById('vid');
+  v.src = url; op('vidOv'); v.play();
+}
+function clVid(){ const v=document.getElementById('vid'); v.pause(); v.src=''; cl('vidOv'); }
+
+/* ── boot ── */
+loadLibrary();
+</script>
+</body>
+</html>
