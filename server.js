@@ -1,254 +1,376 @@
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const ADMIN_PASS = 'password';
+const API_BASE = 'http://localhost:3000';
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+let adminUnlocked = false;
+let allAdminFilms = [];
+let pendingFile = null;
 
-const ROOT_DIR = __dirname;
-const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
-const UPLOADS_DIR = path.join(ROOT_DIR, 'uploads');
-const DB_PATH = path.join(ROOT_DIR, 'films.json');
+/* ── utils ── */
+const esc = s => String(s)
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;');
 
-/* ─────────────────────────────────────────────
-   ADMIN PASSWORD
-───────────────────────────────────────────── */
+const fmtDt = ts =>
+  new Date(ts).toLocaleDateString('en-GB',{
+    day:'numeric',
+    month:'short',
+    year:'numeric'
+  });
 
-const ADMIN_PASS = 'your-real-password-here';
+let _tt;
 
-/* ─────────────────────────────────────────────
-   CREATE REQUIRED FILES/FOLDERS
-───────────────────────────────────────────── */
+function toast(msg, type='ok'){
+  const e = document.getElementById('toast');
+  e.textContent = msg;
+  e.className = 'toast '+type;
 
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  void e.offsetWidth;
+  e.classList.add('show');
+
+  clearTimeout(_tt);
+  _tt = setTimeout(()=>e.classList.remove('show'), 3200);
 }
 
-if (!fs.existsSync(DB_PATH)) {
-  fs.writeFileSync(DB_PATH, '[]', 'utf8');
+/* ── overlays ── */
+function op(id){ document.getElementById(id).classList.add('open') }
+function cl(id){ document.getElementById(id).classList.remove('open') }
+
+document.querySelectorAll('.overlay').forEach(el =>
+  el.addEventListener('click', e => {
+    if(e.target !== el) return;
+    if(el.id === 'vidOv') clVid(); else cl(el.id);
+  })
+);
+
+function goLib(e){
+  e.preventDefault();
+  document.getElementById('libSec')
+    .scrollIntoView({behavior:'smooth'});
 }
 
-/* ─────────────────────────────────────────────
-   MIDDLEWARE
-───────────────────────────────────────────── */
+/* ── tabs ── */
+function tab(t){
+  ['up','mg'].forEach(n => {
+    document.getElementById('tp-'+n)
+      .classList.toggle('active', n===t);
 
-app.use(cors());
-app.use(express.json());
+    document.getElementById('tab'+(n==='up'?'Up':'Mg')+'Btn')
+      .classList.toggle('active', n===t);
+  });
 
-/* ONLY expose uploads publicly */
-app.use('/uploads', express.static(UPLOADS_DIR));
-
-/* ONLY expose frontend files */
-app.use('/', express.static(PUBLIC_DIR));
-
-/* ─────────────────────────────────────────────
-   ADMIN AUTH CHECK
-───────────────────────────────────────────── */
-
-function checkAdmin(req, res, next) {
-  const password = req.headers['x-admin-password'];
-
-  if (password !== ADMIN_PASS) {
-    return res.status(401).json({
-      error: 'Unauthorized'
-    });
-  }
-
-  next();
+  if(t === 'mg') loadAdminFilms();
 }
 
-/* ─────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────── */
-
-function formatSize(bytes) {
-  if (bytes < 1024 * 1024) {
-    return `${Math.round(bytes / 1024)} KB`;
-  }
-
-  if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  }
-
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
-
-function loadDb() {
+/* ── load library ── */
+async function loadLibrary(){
   try {
-    const raw = fs.readFileSync(DB_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
+    const films =
+      await fetch(API_BASE + '/api/films')
+        .then(r=>r.json());
 
-    return Array.isArray(parsed) ? parsed : [];
+    const row = document.getElementById('filmRow');
+
+    if(!Array.isArray(films) || !films.length){
+      row.innerHTML =
+        '<div class="empty-lib"><div style="font-size:2.5rem">🎬</div><p>No films yet — an admin can upload some above.</p></div>';
+      return;
+    }
+
+    row.innerHTML = films.map(f => `
+      <div class="film-card" onclick="play(${JSON.stringify(f.streamUrl)}, ${JSON.stringify(f.title)})">
+        <div class="thumb">
+          <span>MP4</span>
+        </div>
+
+        <div class="film-info">
+          <div class="ftitle">${esc(f.title)}</div>
+          <div class="fmeta">${f.size}</div>
+        </div>
+      </div>
+    `).join('');
+
+  } catch(e){
+    document.getElementById('filmRow').innerHTML =
+      '<div class="empty-lib"><p style="color:var(--accent)">Could not connect to server.</p></div>';
+  }
+}
+
+/* ── admin list ── */
+async function loadAdminFilms(){
+  try {
+    const films =
+      await fetch(API_BASE + '/api/films')
+        .then(r=>r.json());
+
+    allAdminFilms = Array.isArray(films) ? films : [];
+    filterMg();
+
   } catch {
-    return [];
+    toast('Could not load films','err');
   }
 }
 
-function saveDb(films) {
-  fs.writeFileSync(
-    DB_PATH,
-    JSON.stringify(films, null, 2),
-    'utf8'
-  );
+/* ── filter ── */
+function filterMg(){
+  const q =
+    (document.getElementById('srch').value||'')
+      .toLowerCase();
+
+  const res =
+    allAdminFilms.filter(f =>
+      !q || f.title.toLowerCase().includes(q)
+    );
+
+  document.getElementById('mcount').textContent =
+    res.length + ' film' + (res.length!==1?'s':'') +
+    (q?' matching':'');
+
+  const list = document.getElementById('mlist');
+
+  if(!res.length){
+    list.innerHTML =
+      '<div class="nofilm">No films match your search.</div>';
+    return;
+  }
+
+  list.innerHTML = res.map(f => `
+    <div class="mitem">
+      <div class="mico">🎬</div>
+
+      <div class="minf">
+        <div class="mname">${esc(f.title)}</div>
+        <div class="mmeta">${f.size}</div>
+      </div>
+
+      <div class="macts">
+        <button class="act"
+          onclick="play(${JSON.stringify(f.streamUrl)}, ${JSON.stringify(f.title)})">
+          ▶ Play
+        </button>
+
+        <button class="act del"
+          onclick="delFilm(${JSON.stringify(f.id)}, ${JSON.stringify(f.title)})">
+          Delete
+        </button>
+      </div>
+    </div>
+  `).join('');
 }
 
-function sanitizeFilename(name) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+/* ── password ── */
+document.getElementById('adminBtn').onclick = () => {
+  if(adminUnlocked){
+    tab('up');
+    op('adminOv');
+    return;
+  }
+
+  document.getElementById('pwInp').value='';
+  document.getElementById('pwErr').style.display='none';
+  document.getElementById('pwInp').classList.remove('shake');
+
+  op('pwOv');
+  setTimeout(()=>document.getElementById('pwInp').focus(), 150);
+};
+
+function submitPw(){
+  const v =
+    document.getElementById('pwInp').value;
+
+  if(v === ADMIN_PASS){
+    adminUnlocked = true;
+    cl('pwOv');
+    tab('up');
+    op('adminOv');
+  } else {
+    const el = document.getElementById('pwInp');
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+    document.getElementById('pwErr').style.display='block';
+  }
 }
 
-/* ─────────────────────────────────────────────
-   MULTER STORAGE
-───────────────────────────────────────────── */
+document.getElementById('pwBtn').onclick = submitPw;
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
+document.getElementById('pwInp')
+  .addEventListener('keydown', e=>{
+    if(e.key==='Enter') submitPw();
+  });
 
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '.mp4');
+/* ── upload ── */
+const dz = document.getElementById('dz');
+const fi = document.getElementById('fi');
 
-    const base = path.basename(
-      file.originalname || 'video',
-      ext
-    );
+dz.addEventListener('click', ()=>fi.click());
 
-    const safeBase =
-      sanitizeFilename(base).slice(0, 80) || 'video';
-
-    const id = crypto.randomUUID();
-
-    cb(null, `${id}-${safeBase}${ext}`);
-  }
+dz.addEventListener('dragenter', e=>{
+  e.preventDefault();
+  dz.classList.add('over');
 });
 
-const upload = multer({
-  storage,
+dz.addEventListener('dragover', e=>{
+  e.preventDefault();
+  dz.classList.add('over');
+});
 
-  limits: {
-    fileSize: 5 * 1024 * 1024 * 1024
-  },
+dz.addEventListener('dragleave', e=>{
+  if(!dz.contains(e.relatedTarget))
+    dz.classList.remove('over');
+});
 
-  fileFilter: (_req, file, cb) => {
-    if (
-      file.mimetype &&
-      file.mimetype.startsWith('video/')
-    ) {
-      cb(null, true);
+dz.addEventListener('drop', e=>{
+  e.preventDefault();
+  dz.classList.remove('over');
+
+  const f = e.dataTransfer.files[0];
+
+  if(f){
+    if(!f.type.startsWith('video/')){
+      toast('Please drop a video file','err');
       return;
     }
-
-    cb(new Error('Only video files are allowed.'));
+    setFile(f);
   }
 });
 
-/* ─────────────────────────────────────────────
-   ROUTES
-───────────────────────────────────────────── */
-
-/* PUBLIC FILM LIST */
-app.get('/api/films', (_req, res) => {
-  const films = loadDb();
-
-  const mapped = films.map((film) => ({
-    ...film,
-    streamUrl: `/uploads/${film.fileName}`
-  }));
-
-  res.json(mapped);
+fi.addEventListener('change', function(){
+  if(this.files[0]) setFile(this.files[0]);
+  this.value='';
 });
 
-/* ADMIN UPLOAD */
-app.post(
-  '/api/films',
-  checkAdmin,
-  upload.single('video'),
-  (req, res) => {
-    if (!req.file) {
-      res.status(400).json({
-        error: 'No file uploaded.'
-      });
+function setFile(f){
+  pendingFile = f;
 
-      return;
+  document.getElementById('fchosen').textContent =
+    '✓ ' + f.name;
+
+  const t = document.getElementById('ftitle');
+
+  if(!t.value){
+    t.value = f.name
+      .replace(/\.[^.]+$/,'')
+      .replace(/[-_]+/g,' ');
+  }
+}
+
+/* ── upload send ── */
+document.getElementById('upBtn').onclick = () => {
+  if(!pendingFile){
+    toast('Select a file first','err');
+    return;
+  }
+
+  const title =
+    document.getElementById('ftitle').value.trim()
+    || pendingFile.name.replace(/\.[^.]+$/,'');
+
+  const pw =
+    document.getElementById('upProg');
+
+  const fill = document.getElementById('upFill');
+  const lbl = document.getElementById('upLbl');
+
+  pw.style.display='block';
+  fill.style.width='0%';
+  lbl.textContent='Uploading…';
+
+  document.getElementById('upBtn').disabled=true;
+
+  const fd = new FormData();
+  fd.append('video', pendingFile);
+  fd.append('title', title);
+
+  const xhr = new XMLHttpRequest();
+
+  xhr.open('POST', API_BASE + '/api/films');
+
+  xhr.setRequestHeader('x-admin-password', ADMIN_PASS);
+
+  xhr.upload.onprogress = e => {
+    if(e.lengthComputable){
+      const p = Math.round(e.loaded/e.total*100);
+      fill.style.width = p+'%';
+      lbl.textContent = 'Uploading… '+p+'%';
     }
+  };
 
-    const films = loadDb();
+  xhr.onload = () => {
+    const r = JSON.parse(xhr.responseText);
 
-    const titleInput =
-      typeof req.body.title === 'string'
-        ? req.body.title.trim()
-        : '';
+    if(xhr.status === 201){
+      fill.style.width='100%';
+      lbl.textContent='Done!';
 
-    const title =
-      titleInput ||
-      path.basename(
-        req.file.originalname,
-        path.extname(req.file.originalname)
-      );
+      pendingFile=null;
+      document.getElementById('fchosen').textContent='';
+      document.getElementById('ftitle').value='';
 
-    const film = {
-      id: crypto.randomUUID(),
-      title,
-      fileName: req.file.filename,
-      size: formatSize(req.file.size),
-      bytes: req.file.size,
-      addedAt: Date.now()
-    };
+      setTimeout(()=>{
+        pw.style.display='none';
+        fill.style.width='0%';
+      }, 1000);
 
-    films.push(film);
+      document.getElementById('upBtn').disabled=false;
 
-    saveDb(films);
+      toast('"'+title+'" uploaded','ok');
 
-    res.status(201).json({
-      ...film,
-      streamUrl: `/uploads/${film.fileName}`
-    });
-  }
-);
+      loadLibrary();
 
-/* ADMIN DELETE */
-app.delete(
-  '/api/films/:id',
-  checkAdmin,
-  (req, res) => {
-    const films = loadDb();
-
-    const index = films.findIndex(
-      (film) => film.id === req.params.id
-    );
-
-    if (index < 0) {
-      res.status(404).json({
-        error: 'Film not found.'
-      });
-
-      return;
+    } else {
+      toast(r.error || 'Upload failed','err');
+      pw.style.display='none';
+      document.getElementById('upBtn').disabled=false;
     }
+  };
 
-    const [removed] = films.splice(index, 1);
+  xhr.onerror = () => {
+    toast('Server not reachable','err');
+    pw.style.display='none';
+    document.getElementById('upBtn').disabled=false;
+  };
 
-    saveDb(films);
+  xhr.send(fd);
+};
 
-    const filePath = path.join(
-      UPLOADS_DIR,
-      removed.fileName
-    );
+/* ── delete ── */
+async function delFilm(id, title){
+  if(!confirm('Delete "'+title+'"?')) return;
 
-    fs.unlink(filePath, () => {
-      res.status(204).end();
-    });
+  const r = await fetch(API_BASE + '/api/films/' + id, {
+    method:'DELETE',
+    headers:{
+      'x-admin-password': ADMIN_PASS
+    }
+  });
+
+  if(r.status===204){
+    toast('"'+title+'" deleted','err');
+    loadLibrary();
+    loadAdminFilms();
+  } else {
+    const j = await r.json();
+    toast(j.error||'Delete failed','err');
   }
-);
+}
 
-/* ─────────────────────────────────────────────
-   START SERVER
-───────────────────────────────────────────── */
+/* ── play ── */
+function play(url, title){
+  document.getElementById('vtitle').textContent = title;
+  const v = document.getElementById('vid');
+  v.src = url;
+  op('vidOv');
+  v.play();
+}
 
-app.listen(PORT, () => {
-  console.log(
-    `StreamVault server running at http://localhost:${PORT}`
-  );
-});
+function clVid(){
+  const v = document.getElementById('vid');
+  v.pause();
+  v.src='';
+  cl('vidOv');
+}
+
+/* ── boot ── */
+loadLibrary();
